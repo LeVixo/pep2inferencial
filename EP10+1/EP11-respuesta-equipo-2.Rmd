@@ -1,0 +1,187 @@
+---
+title: "Ejercicio 10+1"
+output:
+  html_document:
+    df_print: paged
+date: "2022-11-15"
+---
+
+```{r setup, include=FALSE}
+library ( knitr )
+library ( tidyverse )
+library ( RVAideMemoire )
+library ( rcompanion )
+library ( caret ) ###
+library(ggpubr)
+library(WRS2)
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+### 1. Definir la semilla a utilizar, que corresponde a los últimos cuatro dígitos del RUN (sin considerar el dígito verificador) del integrante de menor edad del equipo.
+
+```{r}
+# Establece la semilla
+set.seed(4566)
+#setwd("C:/usach/Semestre 6/Estadística Inferencial/Ejercicio 10+1")
+
+# Lectura de datos
+dataset = read.csv2("EP11 Datos.csv")
+```
+
+### 2. Seleccionar una muestra de 50 mujeres (si la semilla es un número par) o 50 hombres (si la semilla es impar).
+
+```{r}
+# Filtra las observaciones de las mujeres, dado que la semilla es par
+datamujeres = dataset %>% filter(Gender == 0)
+# Toma una muestra aleatoria de tamaño 50
+samplemujeres = sample_n(datamujeres, 50)
+```
+
+### 3. Seleccionar de forma aleatoria ocho posibles variables predictoras.
+
+```{r}
+# Selecciona ocho posibles variables predictoras 
+# Dado que la columna de peso no salió seleccionada de forma aleatoria, no es necesario excluír la columna "Weight" de la selección
+indices_columns <- sample((1:ncol(dataset)),8)
+nombres_columnas <- colnames(samplemujeres)
+columnas_seleccionadas <- nombres_columnas[indices_columns]
+```
+
+
+### 4. Seleccionar, de las otras variables, una que el equipo considere que podría ser útil para predecir la variable Peso, justificando bien esta selección.
+```{r}
+# Se calculan las correlaciones de las variables restantes con "Weight"
+correlaciones = cor(samplemujeres$Weight,samplemujeres)
+knitr::kable(t(correlaciones),label="Correlaciones con Weight")
+```
+
+De la anterior tabla se puede observar para la columna peso (Weight) la variable que mayor correlación tiene es la de 'Hip.Girth', por ende, se selecciona tal columna como variable predictora para el peso.
+
+### 5. Usando el entorno R, construir un modelo de regresión lineal simple con el predictor seleccionado en el paso anterior.
+
+```{r}
+col_Hip_Grith <- samplemujeres$Hip.Girth
+col_Weight <- samplemujeres$Weight
+# Crea un dataframe con la columna "Hip.Girth" que tiene mayor correlación con la columna "Weight"
+modelo_lineal <- data.frame(col_Hip_Grith, col_Weight)
+# Calcula el modelo de regresión lineal simple 
+ml = lm(data=samplemujeres, Weight ~ Hip.Girth)
+summary(ml)
+```
+
+```{r}
+# Grafica el modelo RLS
+p <- ggscatter(modelo_lineal, x = "col_Hip_Grith", y ="col_Weight", color="blue", fill="blue", xlab = "Hip Girth", ylab = "Weight",title = "Relación Weight - Hip Girth y RLS",)
+
+p <- p + geom_smooth(method= lm , se = FALSE, color="red") 
+print(p)
+```
+### Evaluamos condiciones a fin de que el modelo de regresión lineal sea generalizable
+En primer lugar, se puede comprobar que las variables predictoras son numéricas y no corresponden a una constante, las observaciones son independientes entre sí y además, la variable de respuesta es numérica a nivel de intervalo sin restricciones.
+
+#### Linealidad
+Gracias al gráfico anterior se puede observar una relación lineal, o de crecimiento proporcional, entre Wight y Hip Girht.
+```{r}
+cor.test(samplemujeres$Hip.Girth, samplemujeres$Weight)
+```
+#### Normalidad de los residuos
+```{r}
+shapiro.test(ml$residuals)
+```
+El valor p de la prueba shapiro sobre los residuos es de 0.9815, sumamente superior al alfa de 0.05 (Valor usado generalmente en las ingenierías), por lo que se puede asumir el supuesto de normalidad de los residuos.
+
+#### Constancia de los residuos
+```{r}
+plot(ml$residuals)
+```
+
+No se logra observar ninguna clase de seccion cónica y a su vez se percibe una constancia de los residuos.
+
+### 6. Usando herramientas para la exploración de modelos del entorno R, buscar entre dos y cinco predictores de entre las variables seleccionadas al azar en el punto 3, para agregar al modelo de regresión lineal simple obtenido en el paso 5.
+#### Recordamos columnas seleccionadas con anterioridad.
+```{r}
+# Crea un dataframe con las ocho columnas seleccionadas en la muestra
+dataframe_columns_selected <- data.frame(
+  Hip.Girth=samplemujeres$Hip.Girth,
+  Chest.diameter=samplemujeres$Chest.diameter,
+  Biiliac.diameter=samplemujeres$Biiliac.diameter,
+  Wrists.diameter=samplemujeres$Wrists.diameter,
+  Shoulder.Girth=samplemujeres$Shoulder.Girth,
+  Thigh.Girth=samplemujeres$Thigh.Girth,
+  Waist.Girth=samplemujeres$Waist.Girth,
+  Elbows.diameter=samplemujeres$Elbows.diameter
+)
+
+```
+
+```{r}
+# Calcula las correlaciones entre la variable de respuesta "Hip Girth" y las columnas seleccionadas
+correlacion4NewModel = cor(samplemujeres$Hip.Girth,dataframe_columns_selected)
+knitr::kable(t(correlacion4NewModel))
+```
+
+```{r}
+# Agrega las nuevas columnas al modelo de regresión lineal para observar el impacto que tienen sobre este
+columnas_string = c(paste("samplemujeres",columnas_seleccionadas,sep="$"))
+mlm_2_table = add1(ml, scope =columnas_string ,scale = 0, test = c("none", "Chisq", "F"),x = NULL, k = 2)
+mlm_2_dtf = data.frame(variables=c("sin cambios",columnas_string),AIC=mlm_2_table$AIC)
+mlm_2_dtf
+```
+De la tabla anterior, se puede observar que la nueva variable predictora que mejora el modelo, o más bien, minimiza el AIC es Shoulder Girth. Adicionalmente, presenta un gran correlación con la variable que queremos predecir. Esta podría ser una selección adecuada, sin embargo, observando la tabla de correlaciones entre Hip Girth y las otras variables, se puede ver que entre Hip Girth y Shoulder Girth existe una correlación elevada, de un valor de 0.7375079, lo cual genera colinealidad.
+
+```{r}
+mlm_2 = update(ml, . ~ . + samplemujeres$Shoulder.Girth)
+anova(ml,mlm_2)
+```
+De esta prueba anova sobre ambos modelos se obtiene un valor p inferior a 0.05, en consecuencia el modelo con más complejidad, es decir el que tiene más variables predictoras, es mejor.
+
+#### Correlaciones entre Hip Girth y  Shoulder Girth con las columnas seleccionadas.
+```{r}
+correlacion4NewModel = cor(data.frame(Hip.Girth=samplemujeres$Hip.Girth,Shoulder.Girth=samplemujeres$Shoulder.Girth),dataframe_columns_selected)
+knitr::kable(t(correlacion4NewModel))
+```
+
+```{r}
+columnas_string = c(paste("samplemujeres",columnas_seleccionadas,sep="$"))
+mlm_3_table = add1(mlm_2, scope =columnas_string ,scale = 0, test = c("none", "Chisq", "F"),x = NULL, k = 3)
+mlm_3_dtf = data.frame(variables=c("sin cambios",columnas_string),AIC=mlm_3_table$AIC)
+mlm_3_dtf
+```
+Gracias a la tabla anterior se logra observar que el parámetro que al agregarlo al modelo minimiza el AIC es Biiliac.diameter. Se puede mencionar tres cosas: Primero, que tiene valores de correlación moderados con respecto a las otras variables predictoras ; segundo, tiene una correlación moderada con la variable que se busca predecir y, por último, se podría haber elegido Waist Girth, sin embargo, esta variable presenta correlaciones sumamente fuertes con las otras dos presentes.
+
+```{r}
+mlm_3 = update(mlm_2, . ~ . + samplemujeres$Biiliac.diameter)
+anova(mlm_2,mlm_3)
+```
+Gracias al valor p que se obtiene de la prueba anova que se aplica a los modelos de 2 y 3 predictores, se puede mencionar que el modelo más complejo es mejor.
+
+### 7. Evaluar los modelos y “arreglarlos” en caso de que tengan algún problema con las condiciones que deben cumplir.
+
+Uno de los principales problemas que se tiene en este instante sobre el modelo es que existe una correlación sumamente elevada entre Hip Girth y Shoulder Girth, por ende, es pertinente eliminar una de esas variables buscando que se empeore lo menos posible el modelo.
+
+```{r}
+columnas_por_eliminar = c("samplemujeres$Shoulder.Girth","Hip.Girth")
+better_mlm_2_table = drop1(mlm_3, scope=columnas_por_eliminar, k=2, test = c("none", "Chisq", "F"),x = NULL)
+better_mlm_2_dtf = data.frame(variables=c("sin cambios",columnas_por_eliminar),AIC=better_mlm_2_table$AIC)
+better_mlm_2_dtf
+```
+Si bien es cierto, que eliminar cualquiera de los dos empeora nuestro modelo, dejaría de existir colinealidad. En consecuencia, se decide eliminar Shoulder Girth.
+```{r}
+better_mlm_2 = mlm_3 = update(mlm_2, . ~ . - samplemujeres$Shoulder.Girth)
+```
+
+
+## 8. Evaluar el poder predictivo del modelo en datos no utilizados para construirlo (o utilizando validación cruzada).
+
+Para verificar que el modelo pueda generalizarse, aplicamos validación cruzada de 10 pliegues.
+```{r}
+rlm <- train (Hip.Girth ~ Biiliac.diameter, data = dataframe_columns_selected,
+              method = "lm",
+              trControl = trainControl(method = "cv", number = 10))
+summary(rlm)
+
+predicciones <- predict(rlm, dataframe_columns_selected)
+predicciones
+```
+
+

@@ -1,0 +1,252 @@
+---
+title: "EP 13"
+output: pdf_document
+date: '2022-11-24'
+---
+
+```{r setup, include=FALSE}
+library ( knitr )
+library ( tidyverse )
+library ( RVAideMemoire )
+library ( rcompanion )
+library ( ez )
+library ( caret )
+library(leaps)
+library(ggpubr)
+library(caret)
+library(WRS2)
+library(pROC)
+library ( car )
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1.- Definir la semilla a utilizar, que corresponde a los primeros cinco dígitos del RUN del integrante de mayor edad del equipo.
+
+```{r}
+# Establece la semilla
+set.seed(7297)
+
+#setwd("C:/usach/Semestre 6/Estadística Inferencial/Ejercicio 13")
+
+# Lectura de datos
+dataset = read.csv2("EP11 Datos.csv")
+
+# Calcula IMC
+dataset$IMC = dataset$Weight/((dataset$Height/100)^2)
+
+# Según el valor del IMC, se establece el valor de EN
+dataset_nsp = dataset %>% filter(IMC < 25.0)
+dataset_nsp$EN = 1
+dataset_sp = dataset %>% filter(IMC >= 25.0)
+dataset_sp$EN = 0
+```
+# 2.-  Seleccionar una muestra de 100 personas, asegurando que la mitad tenga estado nutricional “sobrepeso” y la otra mitad “no sobrepeso”.
+
+```{r}
+# Se considera una muestra de 50 hombres sin sobrepeso y 50 hombres con sobrepeso
+muestra_50_nsp = sample_n(dataset_nsp,50)
+muestra_50_ssp = sample_n(dataset_sp,50)
+muestra_100 = rbind(muestra_50_ssp,muestra_50_nsp)
+```
+# 3.- Usando las herramientas del paquete leaps, realizar una búsqueda exhaustiva para seleccionar entre dos y ocho predictores que ayuden a estimar la variable Peso (Weight), obviamente sin considerar las nuevas variables IMC ni EN, y luego utilizar las funciones del paquete caret para construir un modelo de regresión lineal múltiple con los predictores escogidos y evaluarlo usando bootstrapping.
+
+Se genera un nuevo dataframe con las columnas que sí se considerarán como nuevos predictores.
+
+```{r}
+nombres_cols = colnames(muestra_100)
+new_col_names = nombres_cols[nombres_cols != "IMC" & nombres_cols != "EN" & nombres_cols != "Weight"]
+predictors = muestra_100[new_col_names]
+```
+
+Ejecución de la función leaps para realizar la búsqueda de los mejores predictores para estimar Weight.
+
+Definición de entradas para la función leaps:
+x: dataframe con los predictores
+y: vaiable de respuesta
+names: nombres de las columnas a considerar como predictores
+df: numero máximo de variables predictoras a considerar para el modelo.
+```{r}
+modelo_multiple = leaps(x=predictors, y = muestra_100$Weight, names = new_col_names)
+```
+La salida es una lista con los siguientes parámetros:
+Which: arreglos de booleanos que representan qué columnas han sido ejecutadas en determinadas iteraciones.
+label: nombres de las columnas.
+size: representa las la cantidad de columnas elegidas más uno por iteración en which.
+cp: ajuste de r2 para cada iteración en which.
+
+Lo que continua hacer es buscar aquellos arreglos que tenga menos 8 predictores, de acuerdo a size. Posteriormente a eso, buscar el índice de aquel arreglo que minimice el cp y con ese índice buscar el arreglo de precitores a considerar.
+
+Size está ordenado de menor a mayor, por ende, conseguir los índices de los predictores menor a 10 es sencillo.
+```{r}
+cant_pred_elegidos_por_fila = modelo_multiple$size
+cant_filas = length(cant_pred_elegidos_por_fila[cant_pred_elegidos_por_fila < 10])
+```
+
+Ahora, continúa buscar el valor para el dataframe cp mínimo. Lo anterior tomando en cuenta la cantidad de filas conseguidas para predictores menor a 8.
+
+```{r}
+new_cp = modelo_multiple$Cp[1:cant_filas]
+index_min_cp = which.min(new_cp)
+```
+
+Ahora se puede obtener el arreglo de los predictores que mejor explican la respuesta con el índice conseguido.
+
+```{r}
+best_preds = modelo_multiple$which[index_min_cp,]
+cant_preds = sum(best_preds)
+cat("Cantidad de predictores conseguidos.",cant_preds)
+```
+Casualmente fueron 8,lo que es conveniente porque no fue necesario forzar a que fueran más de 1.
+
+```{r}
+knitr::kable(best_preds)
+```
+
+Generación del modelo.
+```{r}
+columns_elegidas = new_col_names[best_preds]
+
+best_multiple_model = lm(Weight ~ Biiliac.diameter + Chest.Girth + Waist.Girth + Hip.Girth + Forearm.Girth + Calf.Maximum.Girth + Age + Height, data =  muestra_100)
+```
+
+
+Emplear train para bootstraping:
+
+```{r}
+bootMuestra <- train(Weight ~ ., data = muestra_100, method = "lm", trControl = trainControl(method = "boot", number = 1999))
+print(summary(bootMuestra))
+```
+El resultado a observar es el "Adjusted R-squared" el cual es de 0.9957, por lo cual es bastante bueno y pdoemos entender que logra exponer el 99,657% de la variabilidad de la muestra de 100 entregada, por lo cual pasamos ahora a evaluar la calidad predictiva del modelo ante estos datos.
+
+```{r}
+predictor <- predict(bootMuestra, muestra_100)
+error <- muestra_100[["Weight"]] - predictor
+raiz_error_cuadratico <- sqrt(mean(error ** 2))
+raiz_error_cuadratico
+```
+La raiz del error cuadrático medio es de 0.8332527, lo que no se que vrg significa xd
+
+
+# 4.- Haciendo un poco de investigación sobre el paquete caret, en particular cómo hacer Recursive Feature Elimination (RFE), construir un modelo de regresión lineal múltiple para predecir la variable IMC que incluya entre 10 y 20 predictores, seleccionando el conjunto de variables que maximice R2 y que use cinco repeticiones de validación cruzada de cinco pliegues para evitar el sobreajuste (obviamente no se debe considerar las variables Peso, Estatura ni estado nutricional –Weight, Height, EN respectivamente).
+
+Se genera un nuevo dataframe con las columnas que sí se considerarán como nuevos predictores.
+```{r}
+nombres_cols = colnames(muestra_100)
+new_col_names = nombres_cols[nombres_cols != "IMC" & nombres_cols != "EN" & nombres_cols != "Weight" & nombres_cols != "Height"]
+cutted_dataframe = muestra_100[new_col_names]
+respuesta = muestra_100$IMC
+cant_preds = c(10:20)
+```
+
+```{r}
+rmm = rfe(x = cutted_dataframe, y = respuesta, sizes=cant_preds,  metric = c("Rsquared"),
+  maximize = TRUE,
+  rfeControl = rfeControl(functions = rfFuncs,
+                          repeats = 5,
+                          method = "repeatedcv",
+                          number = 5))
+```
+Los predictores conseguidos para el nueevo modelo son los siguientes.
+```{r}
+predictores_conseguidos = rmm$optVariables
+knitr::kable(predictores_conseguidos)
+```
+Se genera el modelo.
+```{r}
+modelo_multiple_rfe = lm(data=muestra_100,formula = as.formula(paste("IMC ~ ", paste(predictores_conseguidos, collapse= "+"))))
+summary(modelo_multiple_rfe)
+```
+
+# 5. Usando RFE, construir un modelo de regresión logística múltiple para la variable EN que incluya el conjunto, de entre dos y seis, predictores que entregue la mejor curva ROC y que utilice validación cruzada dejando uno fuera para evitar el sobreajuste (obviamente no se debe considerar las variables Peso, Estatura –Weight y Height respectivamente– ni IMC).
+
+```{r}
+nombres_cols = colnames(muestra_100)
+new_col_names = nombres_cols[nombres_cols != "IMC" & nombres_cols != "EN" & nombres_cols != "Weight" & nombres_cols != "Height"]
+cutted_dataframe = muestra_100[new_col_names]
+respuesta = muestra_100$EN
+cant_preds = c(2:6)
+```
+
+```{r}
+log_rmm = suppressWarnings(expr = rfe(x = cutted_dataframe, y = respuesta, sizes=cant_preds,  metric = c("Rsquared"),
+  maximize = TRUE,
+  rfeControl = rfeControl(functions = rfFuncs,
+                          method = "LOOCV")))
+
+```
+Los predictores conseguidos para el nuevo modelo logístico son los siguientes.
+```{r}
+predictores_conseguidos_log = log_rmm$optVariables
+knitr::kable(predictores_conseguidos_log)
+```
+Se genera el modelo.
+```{r}
+modelo_multiple_logistico_rfe = lm(data=muestra_100,formula = as.formula(paste("IMC ~ ", paste(predictores_conseguidos_log, collapse= "+"))))
+summary(modelo_multiple_logistico_rfe)
+```
+```{r}
+probs_E <- predict(modelo_multiple_logistico_rfe, muestra_100, type ="response")
+
+ROC_e <- roc(muestra_100[["EN"]], probs_E)
+plot(ROC_e)
+```
+
+# 6. Pronunciarse sobre la confiabilidad y el poder predictivo de los modelos obtenidos.
+
+#### Modelo de regresión lineal multiple
+1. Los residuos deben ser independientes entre sí.
+```{r}
+testResiduos = durbinWatsonTest(modelo_multiple_rfe, max.lag = 5)
+print(testResiduos)
+```
+De los valores p anteriores se puede señalar que existe independencia entre los residuos.
+
+2. Distribucion normal de los residuos
+```{r}
+shapiro.test(modelo_multiple_rfe$residuals)
+```
+
+Dado el valor de p se concluye que los residuos siguen una distribución normal.
+
+3. Homosteceidad de residuos
+```{r}
+ncvTest(modelo_multiple_rfe)
+```
+4. Multicolinealidad
+```{r}
+vifs <- vif(modelo_multiple_rfe)
+print(vifs)
+print(1/vifs)
+```
+
+
+
+#### Modelo de regresión logística Multiple
+1. Existe una correlación alta entre cada variable predictora elegida y la respuesta. 
+
+2. Los residuos deben ser independientes entre sí.
+```{r}
+testResiduos = durbinWatsonTest(modelo_multiple_logistico_rfe, max.lag = 5)
+print(testResiduos)
+```
+
+De los valores p anteriores se puede señalar que existe independencia entre los residuos.
+
+
+3. Multicolinealidad
+```{r}
+correlaciones <- cor(muestra_100[predictores_conseguidos_log])
+knitr::kable(t(correlaciones))
+```
+Los valores de la tabla anterior indican que los predictores que mantegan una correlación lo más reducida posible entre ellos.
+
+4. CORRELACION EN 
+
+```{r}
+correlaciones <- cor(muestra_100["EN"], muestra_100[predictores_conseguidos_log])
+knitr::kable(t(correlaciones))
+```
+La correlación entre los predictores y la variable de respuesta es alta.
+
+
+

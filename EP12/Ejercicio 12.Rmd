@@ -1,0 +1,232 @@
+---
+title: "Ejercicio 12"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library ( knitr )
+library ( tidyverse )
+library ( RVAideMemoire )
+library ( rcompanion )
+library ( ez )
+library ( ggpubr)
+library ( WRS2)
+library ( pROC)
+library ( car )
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1. Definir la semilla a utilizar, que corresponde a los últimos cuatro dígitos del RUN (sin considerar el dígito verificador) del integrante de mayor edad del equipo.
+```{r}
+# Establece la semilla
+set.seed(7297)
+
+# Lectura de datos
+dataset = read.csv2("EP11 Datos.csv")
+```
+
+### 2. Seleccionar una muestra de 120 mujeres (si la semilla es un número par) o 120 hombres (si la semilla es impar), asegurando que la mitad tenga estado nutricional “sobrepeso” y la otra mitad “no sobrepeso”. Dividir esta muestra en dos conjuntos: los datos de 80 personas (40 con EN “sobrepeso”) para utilizar en la construcción de los modelos y 40 personas (20 con EN “sobrepeso”) para poder evaluarlos.
+
+```{r}
+# Filtra las observaciones de los hombres, dado que la semilla es impar
+data_hombres = dataset %>% filter(Gender == 1)
+# Calcula IMC
+data_hombres$IMC = data_hombres$Weight/((data_hombres$Height/100)^2)
+
+# Según el valor del IMC, se establece el valor de EN
+hombres_nsp = data_hombres %>% filter(IMC < 25.0)
+hombres_nsp$EN = 1
+hombres_sp = data_hombres %>% filter(IMC >= 25.0)
+hombres_sp$EN = 0
+
+# Para asegurar que las observaciones sean independientes, se considera una muestra de 60 hombres sin sobrepeso y se divide en dos subconjuntos de tamaño 40 y 20
+sample_hombres_nsp = sample_n(hombres_nsp, 60) 
+sample_hombres1_nsp = sample_hombres_nsp[1:40,]
+sample_hombres2_nsp = sample_hombres_nsp[41:60,]
+
+# Para asegurar que las observaciones sean independientes, se considera una muestra de 60 hombres con sobrepeso y se divide en dos subconjuntos de tamaño 40 y 20
+sample_hombres_sp = sample_n(hombres_sp, 60) 
+sample_hombres1_sp = sample_hombres_sp[1:40,]
+sample_hombres2_sp = sample_hombres_sp[41:60,]
+
+# Se unen los subconjuntos para armar las muestras de tamaño 80 y 40, asegurando que la mitad sean hombres con y sin sobrepeso
+sample_muestra_80 = rbind(sample_hombres1_nsp, sample_hombres1_sp)
+sample_muestra_40 = rbind(sample_hombres2_nsp, sample_hombres2_sp)
+```
+
+### 3. Recordar las ocho posibles variables predictoras seleccionadas de forma aleatoria en el ejercicio anterior.
+
+```{r}
+indices_columns = c(23,10,25,24,9,3,20,19)
+nombres_columnas <- colnames(data_hombres)
+columnas_seleccionadas <- nombres_columnas[indices_columns]
+cat("Las variables predictoras del ejercicio anterior son: ", columnas_seleccionadas)
+```
+### 4. Seleccionar, de las otras variables, una que el equipo considere que podría ser útil para predecir la clase EN, justificando bien esta selección.
+
+```{r}
+# Se calcula la correlación entre las otras variables y EN para seleccionar la que tenga mayor correlación para predecir a la variable de respuesta
+correlaciones = abs(cor(sample_muestra_80$EN,sample_muestra_80))
+knitr::kable(t(correlaciones),label="Correlaciones con EN")
+```
+Entonces, dada la tabla anterior se selecciona la variable Waist.Girth porque tiene la mayor correlación con EN.
+
+### 5. Usando el entorno R y paquetes estándares1, construir un modelo de regresión logística con el predictor seleccionado en el paso anterior y utilizando la muestra obtenida.
+
+#### Modelo de regresión logística simple
+```{r}
+# Modelo de regresión logística simple
+modelo_simple <- glm(EN ~ Waist.Girth, family= binomial(link="logit"), data = sample_muestra_80)
+summary(modelo_simple)
+```
+
+```{r}
+# Se grafica el modelo
+g <- ggscatter(sample_muestra_80, x = "Waist.Girth", y = "EN", color = "blue",
+               xlab = "Waist.Girth", ylab = "EN")
+print(g)
+```
+
+
+```{r}
+probs_E <- predict(modelo_simple, sample_muestra_80, type ="response")
+
+ROC_e <- roc(sample_muestra_80[["EN"]], probs_E)
+plot(ROC_e)
+```
+Entendiendo que mientras más alejado del medio esté la curve es mejor el modelo, se puede observar que el modelo se ajusta correctamente.
+
+### 6. Usando herramientas para la exploración de modelos del entorno R, buscar entre dos y cinco predictores de entre las variables seleccionadas al azar en el punto 3, para agregar al modelo de regresión lineal simple obtenido en el pasos.
+
+#### Verificación de correlaciones 
+Verificamos las correlaciones entre las variables seleccionadas y Waist.Girth, que forma parte del modelo logístico.
+```{r}
+correlaciones_ml <- cor(sample_muestra_80$Waist.Girth, sample_muestra_80[columnas_seleccionadas])
+knitr::kable(t(correlaciones_ml))
+```
+
+
+```{r}
+# Evalúa el modelo de regresión lineal con las variables seleccionadas
+add_1_table = add1(modelo_simple, scope=columnas_seleccionadas,scale = 0, test = NULL,x = NULL, k = 2)
+mlm_1_dtf = data.frame(variables=c("sin cambios",columnas_seleccionadas),AIC=add_1_table$AIC)
+mlm_1_dtf
+```
+Dada ésta tabla y la tabla de correlaciones entre la columna Waist.Girth y las columnas seleccionadas, se puede extraer que una columna adecuada para agregar al modelo es Shoulder.Girth porque reduce el AIC y adicionalmente mantiene una correlación reducida con Waist.Girth.
+
+#### Modelo de regresión logística múltiple
+
+```{r}
+modelo_mul_2 = update(modelo_simple, .~. + Shoulder.Girth)
+```
+
+## Verificación de correlaciones entre Wait.Girth y Height
+```{r}
+correlaciones_ml <- cor(sample_muestra_80[c("Waist.Girth", "Shoulder.Girth")], sample_muestra_80[columnas_seleccionadas[columnas_seleccionadas != "Shoulder.Girth"]])
+knitr::kable(t(correlaciones_ml))
+```
+```{r}
+# Evalúa el modelo de regresión lineal con las variables seleccionadas
+add_2_table = add1(modelo_mul_2, scope=columnas_seleccionadas[columnas_seleccionadas != "Shoulder.Girth"],scale = 0, test = NULL,x = NULL, k = 2)
+mlm_2_dtf = data.frame(variables=c("sin cambios",columnas_seleccionadas[columnas_seleccionadas != "Shoulder.Girth"]),AIC=add_2_table$AIC)
+mlm_2_dtf
+```
+Según la tabla anterior y la de las correlaciones se puede mencionar que una gran opción es agregar la columna Calf.Maximum.Girth, debido a mejora en el modelo y baja correlación con los parámetros ya existentes.
+
+```{r}
+modelo_mul_3 = update(modelo_mul_2, .~. + Calf.Maximum.Girth)
+```
+
+```{r}
+probs_E <- predict(modelo_mul_3, sample_muestra_80, type ="response")
+
+ROC_e <- roc(sample_muestra_80[["EN"]], probs_E)
+plot(ROC_e)
+```
+Se puede ver que la curva ROC aún se mantiene alejada del centro, por ende, aún es un buen modelo.
+
+
+### 7. Evaluar la confiabilidad de los modelos (i.e. que tengan un buen nivel de ajuste y son generalizables) y “arreglarlos” en caso de que tengan algún problema.
+
+Se evalua la confiabilidad de los modelos de regresión logística simple y múltiple
+
+#### Modelo de regresión logística simple
+
+Para que el modelo tenga un buen nivel de ajuste y sea generalizable, se debe cumplir:
+
+1. Debe existir una relación lineal entre la variable predictora y de respuesta, para lo cual se evalúa el nivel de correlación entre ambas. Como se mencionó anteriormente, el valor es de 0.6360904, lo cual es mayor a 0.05, por lo que tienen una relación lineal directa y fuerte.
+
+2. Los residuos deben ser independientes entre sí.
+```{r}
+testResiduos = durbinWatsonTest(modelo_simple, max.lag = 5)
+print(testResiduos)
+```
+De los valores p anteriores se puede señalar que existe independencia entre los residuos.
+
+#### Modelo de regresión logística Multiple
+1. Existe una correlación alta entre cada variable predictora elegida y la respuesta. 
+
+2. Los residuos deben ser independientes entre sí.
+```{r}
+testResiduos = durbinWatsonTest(modelo_mul_3, max.lag = 5)
+print(testResiduos)
+```
+De los valores p anteriores se puede señalar que existe independencia entre los residuos.
+
+3. Multicolinealidad
+Constantemente se ha decidido agregar predictores que mantegan una correlación lo más reducidad posible entre ellos.
+
+
+### 8. Usando código estándar, evaluar el poder predictivo de los modelos con los datos de las 40 personas que no se incluyeron en su construcción en términos de sensibilidad y especificidad.
+
+#### Modelo de regresión logística simple
+```{r}
+# Se crea un modelo de regresión logística simple con Waist.Girth y la muestra de 40 hombres
+modelo_sim <- glm(EN~Waist.Girth, family= binomial(link="logit"), data = sample_muestra_40)
+summary(modelo_sim)
+```
+
+```{r}
+# Se grafica el modelo
+g <- ggscatter(sample_muestra_40, x = "Waist.Girth", y = "EN", color = "blue",
+               xlab = "Waist.Girth", ylab = "EN")
+print(g)
+```
+
+```{r}
+probs_E <- predict(modelo_sim, sample_muestra_40, type ="response")
+
+ROC_e <- roc(sample_muestra_40[["EN"]], probs_E)
+plot(ROC_e)
+```
+#### Modelo de regresión logística múltiple
+```{r}
+# Se crea un modelo de regresión logística múltiple con las variables predictoras seleccionadas anteriormente y la muestra de 40 hombres
+modelo_mult <- update(modelo_sim, .~. + Shoulder.Girth + Calf.Maximum.Girth)
+summary(modelo_mult)
+```
+
+```{r}
+probs_E <- predict(modelo_mult, sample_muestra_40, type ="response")
+
+ROC_e <- roc(sample_muestra_40[["EN"]], probs_E)
+plot(ROC_e)
+```
+
+Comparación entre los modelos generados a partir de las muestras de tamaño 80 y 40
+```{r}
+comparacion <- anova(modelo_sim, modelo_mult, test = "LRT") 
+print(comparacion)
+```
+
+Al graficar las curvas ROC para los modelos de regresión logística simple (con la variable predictora Waist.Girth) y de regresión logística múltiple (con las variables predictoras Waist.Girth, Shoulder.Girth y Calf.Maximum.Girth), se puede observar que la curva de RLogM se encuentra más alejada de la diagonal, por lo que se concluye son buenas expicaciones para EN, sin embargo, dada la prueba anova aplicada entre ambos modelos se puede ver que el valor p obtenido es mayor que 0.05, en consecuencia, no hay una diferencia significativa entre el modelo simple y modelo múltiple.
+
+
+
+
+
+
+
+
