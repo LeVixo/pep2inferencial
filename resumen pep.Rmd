@@ -1,0 +1,973 @@
+---
+title: "Resumen pep 3"
+author: "Elena"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    math: katex
+date: "2022-12-06"
+---
+```{=html}
+<style>
+body {
+text-align: justify}
+</style>
+```
+
+# Lectura 13
+### Capítulo 12: Regresión lineal
+La regresión lineal simple (RLS) es una herramienta que sistematiza la idea de 
+identificar posibles relaciones entre dos ariables cuantitativas entre dos variables.
+La RLS asume que la relacion entre dos variables x e y, puede ser modelada mediante 
+una recta, donde:
+* $beta_0$ y $beta_1$ son los parámetros del modelo lineal
+* x es la variable explicativa o predictori (variable independiente)
+* y es una variable de respuesta o de salida (variable dependiente)
+
+$$ 
+\hat y = \beta_0 + \beta_1x
+$$  
+
+
+Denominamos al parámetro $\beta_0$ como intercepto, corresponde al punto en que 
+la recta corta al eje y.
+
+Denominamos al parámetro $\beta_1$ como pendiente, el cual determina la inclinación 
+de la recta del modelo.
+
+De tener una relación lineal perfecta, tendriamos el valor exacto de y solo con 
+saber x, sin embargo, rara vez los datos se ajustan con exactitud.
+
+Gráficos de de disperción:
+
+* Relación Nula: se obtienen puntos al azar dentro del gráfico, los cuales están 
+dispersos sin que se pueda apreciar un patrón.
+
+* Relación lineal fuerte:  los datos muestran una tendencia marcada, la cual se 
+acerca mucho a la recta correspondiente a la regresión lineal de los datos, donde
+si el valor de X aumenta o disminuye, también lo hace el valor de la variable dependiente Y.
+
+* Relación lineal débil: es similar a la relación fuerte, la diferencia es que los 
+datos no se encuentran aglutinados cerca de la recta marcada, sino que se encuentran 
+a sus alrededores, de igual forma, se marca una tendencia de los datos.
+
+* Cabe destacar que está la posibilidad de que los datos marquen una tendencia 
+visible, pero que no corresponda a una relación lineal.
+
+$\hat y$ corresponde al valor esperado de y para un determinado x, en la practica
+existe una diferencia entre el valor esperado $\hat y$ y el valor observado de y. 
+Esta diferencia corresponde al error o residuo y se denota e, entonces: 
+$$ y = \hat y + e$$
+Otra forma de entender el residuo es la distancia que separa a la observación de 
+la recta. Si la observacion está por sobre esta, e > 0, en caso contrario e < 0.
+Dado que los residuos se utilizan para evaluar que tan bien se ajusta un modelo
+lineal al conjunto de datos, suelen mostrarse en un gráfico de residuos, el cual 
+es un gráfico de dispersión donde la variable predictoria se presenta en su escala 
+original y el eje y muestra el residup para cada observación.
+
+### Correlación 
+Formalmente, podemos medit la fuerza de una relación lineal mediante de la correlación. 
+Una de las formas más sensillas para calcularlas es el coeficiente de correlación 
+de Pearson, donde: 
+
+* $\bar x, \bar y$ son las medidas de la variable x e y en la muestra
+* $s_x,s_y$ corresponden a las desviaciones estándar de las de las variables x e y
+en la muestra.
+* n es el tamaño de la muestra 
+
+** Fórmula **
+
+La función de r que calcula la correlación es **cor()**
+
+La correlación siempre toma un valor entrre -1 y 1. Mientras más débil sea la relación
+entre dos variables, su valor será más cercano a 0. El signo de la correlación 
+indica si la relación es directa (R>0) o inversa (R<0).
+
+
+
+### Regresión lineal mediante mínimos cuadrados
+
+Mínimos cuadrados minimiza la suma de los cuadrados de los residuos, tiene la 
+ventaja de ser fácil de tomar en cuenta en la discrepancia entre la magnitud del 
+residuo y su efecto. 
+
+Para aplicar este método debemos cumplir con als siguientes condiciones:
+
+1. Los datos deben presentar una relación lineal.
+
+2. La distribución de los residuos debe ser cercana a la normal.
+
+3. La variable de los puntos en torno a la línea de mínimos cuadrados debe ser 
+aproximadamente cte.
+
+4. Las observaciones deben ser independientes entre si, lo que significa que no 
+se puede usar regresión lineal con series de tiempo (tema que no entra en el texto)
+
+Para minimos el ajuste de mínimos cuadrados ocupamos la función lm(fórmula, data),
+donde:
+
+* fórmula: tiene la forma <  variable de respuesta > ~ < variable predictoria >
+
+* data: matríz de datos
+
+### Se observa en el gráfico de residuos si se verifican las condiciones o el modelo es apropiado
+1. Un gráfico en que los residuos se distribuyen aleatoriamente en torno a la línea 
+de valor 0, sugiere que es razonable suponer que las variables presentan una relación lineal.
+
+2. Cuando los residuos forman una "banda horizontal" en torno a la linea de valor 0,
+sugiere una variabilidad aproximadamente constante de los residuos.
+
+3. La ausencia de residuos que se alejan del patrón que forman los demás, sugiere la 
+ausencia de valores atípicos.
+ 
+
+```{r}
+library (ggpubr)
+
+# Cargar los datos.
+datos <- mtcars
+
+# Ajustar modelo con R.
+modelo <- lm(mpg ~ wt, data = datos) # mmétodo para crear un modelo de RLS
+print (summary (modelo) )
+
+# Graficar el modelo (Gráfico de dispersión)
+p <- ggscatter(datos, x = "wt", y = "mpg", color = "blue", fill = "blue",
+               xlab = "Peso [1b x 1000]", ylab = "Rendimiento [millas/galén]")
+
+p <- p + geom_smooth(method = Im, se = FALSE, colour = "red")
+
+print(p)
+
+# Crear graficos para evaluar el modelo.
+plot (modelo)
+```
+
+El gráfico "Residuals vs Fitted" corresponde al gráfico de residuos.
+
+El gráfico QQ corresponde a la distribución de los 
+
+El gráfico "Scale-Location" corresponde a los residuos estandarizados.
+
+El gráfico "Residuals vs Leverage" corresponde al apalancamiento.
+
+```{r}
+# Ingresar algunas instancias artificiales.
+mpg <- c(23.714, 19.691, 19.242, 12.430, 10.090, 9.565, 18.171, 26.492, 7.054, 
+         24.447, 15.683, 17.403, 13.465, 18.850, 29.493)
+
+wt <- c(2.973, 4.532, 2.332, 3.016, 4.220, 4.286, 2.580, 3.084, 3.816, 2.775, 
+        3.251, 3.013, 4.951, 2.644, 2.218)
+
+nuevos <- data.frame(mpg, wt)
+
+# Usar el modelo para predecir el rendimiento de los nuevos y ver los
+# residuos resultantes.
+
+predicciones <- predict(modelo, nuevos)
+
+residuos <- nuevos$mpg - predicciones
+
+nuevos <- data.frame(nuevos, residuos)
+
+r <- ggscatter(nuevos, x = "wt", y = "residuos", color = "blue",
+                fill = "blue", xlab = "Peso [1b * 1000]", ylab = "Residuo")
+r <- r + geom_hline(yintercept = 0, colour = "red")
+
+print (r)
+
+```
+
+### Interpretación de los parámetros
+
+La pendiente explica la diferencia esperada en el valor de la respuesta y si el 
+predictor x se incrementa en una unidad. 
+
+La intercepción corresponde a la respuesta que se obtendría en promedio si x fuera 
+igua a 0, suponiendo que el modelo fuese válido para x = 0, lo cual no siempre 
+ocurre.
+
+Lo anterior **solo tiene validez dentro de el rango de los valores originales**, 
+por lo que la extrapolación (estimar valores fuera del rango de los datos originales)
+puede conllevar a errores al asumir que el modelo es valido para donde aún no ha 
+sido analizado. 
+
+### Uso del modelo
+La función predict(object, newdata) permite usar un modelo (en este caso RLS) para
+predecir una respuesta, donde:
+
+* object: modelo a emplear.
+
+* newdata: matriz de datos con las nuevas instancias para las que se desea efectuar 
+una predicción, la cual debe tener todas las columnas presentes en la fórmula de modelo.
+
+### Regresión lineal con un predictor categórico
+
+Para usar una var. categórica de 2 niveles, hay que convertirla a formato numérico, 
+para lo cual creamos una nueva variable indicadora que toma los valores 0 y 1.
+
+Rara vez tendremos que realizar este paso, ya que las funciones de R que ajustan
+modelos lo hacen automáticamente cuando encuentra predictores categóricos.
+
+```{r}
+# Crear un data frame con una variable dicotómica
+alumno <- 1:5
+sexo <- factor(c("F","M","F","F","M"))
+datos <- data.frame(alumno, sexo)
+
+# Crear una variable indicadora para sexo, con valor 0
+# para hombres y 1, para mujeres.
+es_mujer <- rep(1, length(sexo))
+es_mujer[sexo == "M"] <- 0
+
+# Reemplazar la variable sexo por lavariable indicadora
+datos <- cbind(datos, es_mujer)
+datos[["sexo"]] <- NULL
+```
+
+Al usar un predictor dicotómico siempre se cumple la condición de que los datos 
+presentan una relación lineal, sin embargo, debemos verificar que la distribución 
+de los residuos de ambos grupos se asemeje a la normal y que tengan varianzas similares
+
+```{r}
+# Cargar los datos
+datos <- mtcars
+
+# Ajustar modelo con R
+modelo <- lm(mpg ~ vs, data = datos)
+print (summary (modelo))
+
+# Graficar el modelo.
+p <- ggscatter(datos, x = "vs", y = "mpg", color = "blue", fill = "blue", 
+               xlab = "Forma del motor", ylab = "Rendimiento [millas/galén]",
+               xticks.by = 1)
+
+p <- p + geom_smooth(method = lm, se = FALSE, colour = "red")
+print (p)
+
+# Crear graéficos para evaluar el modelo.
+plot (modelo)
+
+#Graficar residuos.
+residuos <- modelo$residuals
+datos <- cbind(datos, residuos)
+datos[["vs"]] <- factor(datos[["vs"]])
+
+# Distribución de reciduos
+r <- ggqqplot(datos, x = "residuos", facet.by = "vs", color = "vs",
+              palette = c("blue", "red"))
+print (r)
+
+```
+
+
+### Influencia de valores atípicos
+
+Los valores atípicos pueden influir significativamente en el incumplimiento de 
+las condiciones que debemos verificar para poder usar una regresión lineal, sin 
+embargo, no todos los valores atípicos son perjudiciales.
+
+Los valores atípicos que se alejan horizontalmente del centro de la nube principal
+de puntos puden potencialmente, tener una gran influencia en el ajuste de la linea 
+de regresión, esto se conoce como **apalancamiento**, pues dichos puntos parecen 
+tirar de la línea hacia ellos. Cuando un valor atípico ejerce efectivamente esta 
+influencia, decimos que es un punto influyente.
+
+* Se describe un método para identificar valores atípicos, pero no lo entendí :p
+
+### Bondad de ajuste
+
+Una medida para evaluar la bondad de ajuste de un RLS con respecto a las observaciones
+es el coeficiente de determinación, que corresponde al cuadrado de la correlación,
+por lo que suele también denominarse R-cuadrado, esta medida cuyo valor varía entre 
+0 y 1, corresponde al porcentaje de la variabilidad de la respuesta que es explicado 
+por el predictor.
+
+Podemos observar el valor de esto en la penúltima lía de la descripción del modelo
+obtenido bajo el nombre **Multiple R-squared**, este valor se toma como un porcentaje
+y luego se explica como que **La recta de RLS construida con ___ como predictor, explica -% de la variabilidad en ___ **
+
+### Validación cruzada
+
+Es una estrategia para saber si un modelo puede generalizarse, para ello el conjunto 
+de datos se separa en fragmentos:
+
+* Conjunto de entrenamiento: suele contener entre el 80% y el 90% de las observaciones 
+(aunque es frecuente encontrar que solo contenga el 70% de ellas), escogidas de 
+manera aleatoria, y se emplea para ajustar la recta con el método de minimos cuadrados.
+
+* Conjunto de prueba: contiene el 10% a 30% restante de las instancias, y se usa para evaluar el
+modelo con datos nuevos.
+
+
+### Validación cruzada de k pliegues
+
+Sigue la misma idea de la validacion cruzada expuesta en el apartado anterior: 
+usar un conjunto de entrenamiento para ajustar el modelo y otro de prueba para 
+evaluarlo. Sin embargo, esta variante modifica este proceso a fin de obtener k
+estimaciones del error. Para ello se separa el conjunto de datos en k subconjuntos 
+de igual tamaño y realizamos k estimaciones del error cuadratico medio.
+
+En R podemos realizar este proceso de forma bastante sencilla, graias a la función
+train(formula, method = "lm", trControl(method = "cv", number)), donde:
+
+* formula: formula que se ocupa en las llamadas internas a lm().
+
+* number: cantidad de pliegues(k)
+
+```{r}
+library(ggplot2)
+library(caret)
+
+# Cargar los datos.
+datos <- mtcars
+
+# Crear conjuntos de entrenamiento y prueba.
+set.seed (101)
+n <- nrow(datos)
+n_entrenamiento <- floor(0.7 * n)
+muestra <- sample.int(n = n, size = n_entrenamiento, replace = FALSE)
+entrenamiento <- datos[muestra, ]
+prueba <- datos[-muestra, ]
+
+# Ajustar modelo usando validacién cruzada de 5 pliegue:
+modelo <- train(mpg ~ wt, data = entrenamiento, method = "lm", 
+                trControl = trainControl(method = "cv", number = 5))
+
+print (summary (modelo))
+
+# Hacer predicciones para el conjunto de entrenamiento.#
+predicciones_entrenamiento <- predict(modelo, entrenamiento)
+
+# Calcular error cuadrado promedio para el conjunto de prueba
+error_entrenamiento <- entrenamiento[["mpg"]] - predicciones_entrenamiento
+mse_entrenamiento <- mean(error_entrenamiento ** 2)
+cat("MSE para el conjunto de entrenamiento:", mse_entrenamiento, "\n")
+
+# Hacer predicciones para el conjunto de prueba.
+predicciones_prueba <- predict (modelo, prueba)
+
+# Calcular error cuadrado promedio para el conjunto de prueba.
+error_prueba <- prueba[["mpg"]] - predicciones_prueba
+mse_prueba <- mean(error_prueba ** 2)
+cat("MSE para el conjunto de prueba:", mse_prueba)
+
+```
+
+
+### Validación cruzada dejando uno fuera
+
+Cuando la muestra disponible es pequeña, una buena alternativa es usar validación cruzada dejando uno fuera (leave-one-out cross validation en inglés). 
+El esquema es el mismo que para validacién cruzada con k pliegues, pero ahora 
+usaremos tantos pliegues como observaciones tenga el conjunto de entrenamiento. 
+En otras palabras, hacemos una iteracion por cada elemento del conjunto de entrenamiento, 
+reservando una tinica observacién para validación. En R, la llamada a train() es 
+muy similar a la que hicimos para validacién cruzada con k pliegues: solo cambia 
+el argumento trControl, cuyo valor ahora debe ser trainControl(method = "LOOCV").
+
+# Lectura 14: Regresión lineal múltiple
+
+Una RL conn mpultiples variables tiene:
+
+* Cada $x_i$ es un predictor.
+
+* Cada $\beta_i$ corresponde a un parámetro del modelo.
+
+* $k$ es la cantidad de predictore.
+
+* $\hat y$ es una estimación de la respuesta.
+
+Con la fórmula 
+$$ \hat y = \beta_0 + \beta_1 x_1 + ...+\beta_k x_k$$
+
+Al igual que en RLS, se requiere de verificar algunas condiciones:
+
+1. La distribución de los residuos debe ser cercana a la normal.
+
+2. La variabilidad de los residuos debe ser aproximadamente cte.
+
+3. Los residuos deben ser independientes entre si.
+
+4.Cada variable se relaciona linealmente a la respuesta.
+
+Hacer una RLM con dos predictores
+```{r}
+library(scatterplot3d)
+
+# Carga de datos
+datos4 <- mtcars
+
+# Ajustar modelo usando calidación cruzada de 5 pliegues
+modelo4 <- lm(mpg ~ wt + qsec, data = datos4)
+print(summary(modelo4))
+
+# Graficar modelo ajustado.
+g <- scatterplot3d(datos4$wt, datos4$qsec, datos4$mpg, type = "p",
+                   highlight.3d = TRUE, pch = 20, xlab = "Peso [1b x 1000]",
+                   ylab = "Rendimiento [millas/galén]", 
+                   zlab = "1/4 de milla [s]")
+
+g$plane3d(modelo4 ,draw_polygon = TRUE, draw_lines = TRUE)
+print (g)
+
+
+```
+
+
+### RLM con predictores categóricos
+
+Podemos hacer esta tarea de manera sencilla mediante la función dummy.data.frame(data, names,
+drop) del paquete dummies, donde:
+
+* data: matriz de datos.
+
+* names: nombres de las columnas para las que se desea crear variables artificiales. Si se omite este
+argumento, se crean variables artificiales para todas las variables categóricas y de tipo string.
+
+* drop: indicador booleano que, cuando es verdadero, descarta la variable original del resultado.
+
+```{r}
+# library(dummies)
+
+# Crear una matrz de datos.
+#sujeto <- 1:10
+#sexo <- c("F", "F", "M", "M", "M", "M", "F", "M", "F", "F")
+#tipo <- c("B", "D", "A", "B", "A", "C", "D", "D", "D","A")
+#valor <- c(1.68, 2.79, 1.92, 2.26, 2.1, 2.63, 2.19, 3.62, 2.76, 1.26)
+#datos5 <- data.frame(sujeto, sexo, tipo, valor)
+
+# Crear variables artificiales.
+#datos.dummy <- dummy.data.frame(datos5 , drop = TRUE)
+#datos.dummy[["sexoF"]] <- NULL
+#datos.dummy[["tipoA"]] <- NULL
+
+# Crear modelos lineales
+#m1 <- lm(valor ~ sexo + tipo, datos5)
+#print(m1)
+
+#m2 <- lm(valor~sexoM + tipoB + tipoC + tipoC, datos.dummy)
+#print(m2)
+```
+
+Para usar la variable categórica como predictor agregamos al modelo variables artificiales creadas a partir de ella. lm lo hace solo xd
+No obstante, al usar el modelo, debemos fijarnos en que la cantidad
+de predictores categóricos sea la misma, como también en que la cantidad y el orden de sus niveles coincida con los del conjunto de entrenamiento.
+
+
+### Condiciones para usar RLM
+
+Llegado este punto, necesitamos examinar con más detalle las condiciones que debemos cumplir para que un modelo de regresión lineal sea generalizable:
+
+1. Las variables predictoras deben ser cuantitativas o dicotómicas (de ahí la necesidad de variables indicadoras para manejar más de dos niveles).
+
+2. La variable de respuesta debe ser cuantitativa y continua, sin restricciones para su variabilidad.
+
+3. Los predictores deben tener algún grado de variabilidad (su varianza no debe ser igual a cero). En otras palabras, no pueden ser constantes.
+
+4. No debe existir multicolinealidad. Esto significa que no deben existir relaciones lineales fuertes entre dos o más predictores (coeficientes de correlación altos).
+
+5. Los residuos deben ser homocedásticos (con varianzas similares) para cada nivel de los predictores.
+
+6. Los residuos deben seguir una distribución cercana a la normal centrada en cero.
+
+7. Los valores de la variable de respuesta son independientes entre sí.
+
+8. Cada predictor se relaciona linealmente con la variable de respuesta.
+
+### Evaluación del ajuste de una RLM
+
+Cuando el modelo es multivariado, la función ya conocida para estimar $R^2$ genera una mala estimación del porcentaje de la varianza explicada por el modelo, pues los grados de libertad asociados a la variabilidad de los residuos es ahora diferente.
+
+Así, para evaluar una RLM tenemos que usar un coeficiente de determinación ajustado. También podemos usar este ajuste cuando tenemos un único predictor, aunque la diferencia en este caso suele ser muy pequeña como para ser relevante. 
+
+
+Las alternativas para evaluar la bondad de ajuste en RLM son varias, dos de ellas son el criterio de información de Akaike, abreviado AIC, y el criterio bayesiano de Schwarz (BIC o SBC), que penalizan el modelo por contener variables adicionales, por lo que mientras menor sea su valor, mejor será el modelo.
+
+* AIC(object)
+
+* BIC(object)
+
+Donde object es un modelo lineal ajustado.
+
+Otra opción, adecuada cuando necesitamos saber cuáles predictores son estadísticamente significativos, es observar los valores p asociados a cada predictor. Habitualmente consideraremos significativos aquellos predictores para los cuales p < 0,05
+
+### Comparación de modelos
+
+No entendí 100%, por lo que creo que entiendo  Si calculamos el AIC para cada uno de los modelos ajustados hasta ahora, veremos que el AIC del modelo con dos predictores es menor. Sin embargo, al ser una medida relativa, hasta ahora no contamos con una prueba estadística que nos permita determinar si la diferencia es significativa.
+
+```{r}
+# Cargar datos
+datos <- mtcars
+
+# Ajustar modelo con el peso como predictor.
+modelo_1 <- lm(mpg ~ wt, data = datos)
+print(summary(modelo_1))
+aic_1 <- AIC(modelo_1)
+cat("Modelo 1: AIC =", AIC(modelo_1), "\n")
+
+# Ajustar modelo con el peso y el cuarto de milla como predictores
+modelo_2 <- lm(mpg ~ wt + qsec, data = datos)
+print (summary (modelo_2))
+aic_2 <- AIC(modelo_2)
+cat ("Modelo 2: AIC =", AIC(modelo_2), "\n")
+
+# Comparar ambos modelos.
+comparacion <- anova(modelo_1, modelo_2)
+print (comparacion)
+
+```
+
+### Selección de los predictores
+
+En R, podemos realizar este método con ayuda de la función **update(object,formula)**, que nos permite incorporar o quitar variables del modelo, donde:
+
+* object: modelo previamente ajustado, en este caso con lm().
+
+* formula: actualización de la fórmula para el nuevo modelo (incorporación y eliminación de variables en un modelo de RLM.).
+
+```{r}
+# Cargar datos.
+datos <- mtcars
+
+# Ajustar modelo inicial con la variable wt como predictor.
+modelo <- lm(mpg ~ wt, data = datos)
+cat("=== Modelo inicial ===\n")
+print (modelo)
+
+# Incorporar el predictor cyl.
+modelo <- update(modelo, . ~ . + cyl)
+cat("=== Modelo con predictor wt y cyl ===\n")
+print(modelo)
+
+# Quitar el predictor wt.
+modelo <- update(modelo, . ~ . - wt)
+cat("=== Modelo con predictor cyl ===\n")
+print(modelo)
+
+# Agregar predictores wt y drat, y quitar predictor cyl.
+modelo <- update(modelo, . ~ . + wt + drat - cyl)
+cat("=== Modelo con predictores wt y drat ===\n")
+print(modelo)
+```
+
+**add1(object, scope)** y **drop1(object, scope)**, donde:
+
+* object: un modelo ajustado.
+
+* scope: fórmula que proporciona los términos a agregar o quitar.
+
+add1() evalúa la incorporación de cada nuevo predictor potencial (separadamente) a un modelo base y entrega algunas métricas para el efecto que tiene su incorporación, entre ellas el AIC. El mejor nuevo predictor corresponde, entonces, a aquella variable con el menor AIC.
+
+La función drop1() evalúa (separadamente) la eliminación potencial de cada predictor presente en un modelo base y entrega las mismas métricas que add1() para el efecto que tiene su eliminación. El mejor predictor a descartar es, una vez más, aquel que lleva a la mayor reducción en AIC.
+
+```{r}
+# Cargar datos.
+datos <- mtcars
+
+# Ajustar modelo nulo.
+nulo <- lm(mpg ~ 1, data = datos)
+# cat( Modelo nulo
+# print (summary (nulo))
+
+# Ajustar modelo completo.
+completo <- lm(mpg ~ ., data = datos)
+# cat Modelo completo ===\n")
+# print (summary (completo))
+
+# Evaluar variables para incorporar.
+print(add1(nulo, scope = completo))
+cat ("\n\n")
+
+# Agregar la variable con menor AIC.
+modelo <- update(nulo, . ~ . + wt)
+
+# Evaluar variables para incorporar.
+print (add1(modelo, scope = completo))
+cat("\n\n")
+
+# Agregar la variable con menor AIC.
+modelo <- update(modelo, . ~ . + cyl)
+
+# Evaluar variables para eliminar.
+print(drop1(completo, scope = completo))
+cat ("\n\n")
+
+# Eliminar la variable con menor AIC.
+modelo <- update(modelo, . ~ . - cyl)
+
+
+
+```
+
+
+Por supuesto, R en la práctica ya cuenta con funciones que implementan los métodos para seleccionar predictores antes descritos (excepto la regresión jerárquica, por supuesto). Los tres primeros pueden efectuarse mediante la función step(object, scope, direction, trace), que usa add1() y drop1() de manera iterativa, donde:
+
+* object: es un modelo ya ajustado que es usado como punto de partida.
+
+*scope: es una lista de fórmulas que define el rango de modelos a explorar.
+
+* direction: indica el tipo de selección a realizar, donde “forward” corresponde a selección hacia adelante; “backward”, a eliminación hacia atrás, y “both”, a regresión escalonada.
+
+* trace: argumento opcional que indica si se quiere ver por consola el proceso realizado.
+
+```{r}
+library (leaps)
+
+# Cargar datos.
+datos <- mtcars
+
+# Ajustar modelo nulo.
+nulo <- lm(mpg ~ 1, data = datos)
+cat ("=== Modelo nulo ===\n")
+print (summary (nulo))
+
+# Ajustar modelo completo.
+completo <- lm(mpg ~ ., data = datos)
+cat("#== Modelo completo ===\n")
+print (summary (completo))
+
+# Ajustar modelo con seleccién hacia adelante.
+adelante <- step(nulo, scope = list (upper = completo), direction = "forward", trace = 0)
+cat ("=== Modelo con seleccién hacia adelante ===\n")
+print (summary (adelante))
+cat("AIC =", AIC(adelante), "\n\n")
+
+# Ajustar modelo con eliminacién hacia atrés
+atras <- step(completo, scope = list(lover = nulo), direction = "backward", trace = 0)
+
+cat ("=== Modelo con eliminacién hacia atraés ===\n")
+print (summary (atras))
+cat ("AIC =", AIC(atras), "\n\n")
+
+# Ajustar modelo con regresién escalonada.
+escalonado <- step(nulo, scope = list(lower = nulo, upper = completo),
+direction = "both", trace = 0)
+cat ("=== Modelo con regresién escalonada ===\n")
+print (summary (escalonado))
+cat("AIC =", AIC(escalonado), "\n\n")
+
+# Ajustar modelo con todos los subconjunto:
+modelos <- regsubsets(mpg ~ ., data = datos, method = "exhaustive", nbest = 1, nvmax = 10)
+print (plot (modelos))
+
+```
+
+### Identificación de valores con sobreinfluencia 
+
+Existen diversos estadísticos que nos permiten evaluar la influencia de una observación en el ajuste de un
+modelo de regresión lineal:
+
+1. Residuo estandarizado: los residuos deben seguir una distribución normal estándar, por lo que se
+esperaría que el 95% de ellos se encuentre entre -1,96 y 1,96, y el 99 % entre -2,58 y 2,58.
+
+2. Valor predicho ajustado: corresponde al valor predicho si se excluyera dicho punto en el ajuste del
+modelo. Si el punto no ejerce gran influencia en el ajuste del modelo, se esperaría que este valor fuera
+muy cercano al predicho cuando dicho punto sí es considerado para el ajuste.
+
+3. Residuo estudiantizado: está dado por el valor predicho ajustado dividido por el error estándar.
+Una característica importante de esta medida es que es estandarizada y sigue una distribución t, por
+lo que puede emplearse para hacer comparaciones entre distintos modelos de regresión. Sin embargo,
+esta medida solo indica cuánto influye la presencia de un punto en el conjunto de entrenamiento en su
+valor predicho, pero no proporciona información alguna en cuanto a la influencia de la observación en
+el modelo como un todo.
+
+4. Diferencia en ajuste: más conocido como DFFit, es la diferencia entre el valor predicho para la
+observación evaluada cuando esta es considerada en el ajuste del modelo y cuando no lo es.
+
+5. Diferencia en betas: más conocido como DFBeta, corresponde a la diferencia entre los valores de un
+parámetro cuando es estimado usando todas las observaciones y cuando es estimado sin considerar la
+observación evaluada. Se calcula para cada parámetro del modelo. Se consideran preocupantes aquellas
+observaciones en que este estimador es mayor a 1.
+
+6. Distancia de Cook: es una medida del efecto que tiene una observación en particular combinadamente
+en todos los parámetros de un modelo. Aquellos valores para los cuales la distancia de Cook sea mayor
+a 1 pueden ser considerados como potencialmente problemáticos.
+
+7. Apalancamiento: estima la influencia del valor observado en los valores predichos. Toma valores entre
+0 y 1. Un apalancamiento igual a 0 señala que un punto no ejerce influencia alguna, mientras que un valor
+de 1 indica que la influencia ejercida por esa observación es total. Se consideran preocupantes aquellas
+observaciones para las cuales esta medida supere en dos o tres veces el apalancamiento promedio, dado
+por la ecuación 13.6, donde k es la cantidad de predictores en el modelo y n la cantidad de observaciones
+empleadas para el ajuste.
+
+8. Razón de covarianza: corresponde a la razón entre los determinantes de la matriz de covarianzas
+cuando se consideran todas las observaciones y cuando se omite la observación en estudio. Aquellas
+observaciones para las cuales el valor de esta medida estén fuera del intervalo definido por la ecuación
+13.7 se consideran preocupantes
+
+```{r}
+# Cargar datos.
+datos <- mtcars
+
+# Ajustar modelo.
+modelo <- lm(mpg ~ wt + qsec + am, data = datos)
+plot (modelo)
+
+# Reducir matriz de datos para que solo contenga los predictores
+# empleados y la respuesta.
+predictores <- names(coef(modelo)) [-1]
+datos <- datos[, c(predictores, "mpg")]
+
+# Construir una matriz de datos con la respuesta predicha, los
+# residuos y algunas estadisticas para evaluar la influencia de
+# cada observacién.
+resultados <- data.frame(respuesta_predicha = fitted(modelo))
+resultados[["residuos_estandarizados"]] <- rstandard(modelo)
+resultados[["residuos_estudiantizados"]] <-rstudent (modelo)
+resultados[["distancia_Cook"]] <- cooks.distance (modelo)
+resultados[["dfbeta"]] <- dfbeta(modelo)
+resultados [["dffit"]] <- dffits(modelo)
+resultados[["apalancamiento"]] <- hatvalues (modelo)
+resultados[["covratio"]] <- covratio(modelo)
+cat("Identificacién de valores atipicos:\n")
+
+# Observaciones con residuos estandarizados fuera del 95% esperado.
+sospechosos1 <- which(abs(
+  resultados [["residuos_estandarizados"]]) > 1.96)
+cat("- Residuos estandarizados fuera del 95% esperado:", sospechosos1, "\n")
+
+# Observaciones con distancia de Cook mayor a uno.
+sospechosos2 <- which(
+  resultados[["cooks.distance"]] > 1)
+cat("- Residuos con una distancia de Cook alta: ",
+sospechosos2, "\n")
+
+# Observaciones con apalancamiento mayor igual al doble del
+# apalancamiento promedio.
+apal_medio <- (ncol(datos) + 1) / nrow(datos)
+sospechosos3 <- which(resultados[["apalancamiento"]] > 2 * apal_medio)
+cat("- Residuos con apalancamiento fuera de rango:",
+sospechosos3, "\n")
+
+# Observaciones con DFBeta mayor o igual a 1.
+sospechosos4 <- which(apply(resultados[["dfbeta"]] >= 1, 1, any))
+names (sospechosos4) <- NULL
+cat("- Residuos con DFBeta >= 1:", sospechosos4, "\n")
+
+# Observaciones con razén de covarianza fuera de rango.
+
+inferior <- 1 - 3 * apal_medio
+
+superior <- 1 + 3 * apal_medio
+
+sospechosos5 <- which(resultados[["covratio"]] < inferior | resultados[["covratio"]] > superior)
+cat("- Residuos con razén de covarianza fuera de rango:", sospechosos5, "\n")
+
+# Resumen de valores sospechosos.
+sospechosos <- c(sospechosos1, sospechosos2, sospechosos3, sospechosos4, sospechosos5)
+sospechosos <- sort(unique (sospechosos))
+cat("\nResumen de valores sospechosos:", "\n")
+cat("Apalancamiento promedi", apal_medio, "\n")
+cat("Intervalo razón de covarianza: [", inferior, + + superior, "]\n\n", sep = "")
+print (round (resultados [sospechosos, c("distancia_Cook", "apalancamiento", "covratio")], 3))
+
+
+```
+
+# No entendí bien como interpretar el gráfico de todos los modelos encontrados
+# ¿esto sirve para ver cuales de los valore atípicos es posible eliminar? 
+# Tengo dudas con los valores del pvalue al usar durbin watson, ya que en el texto decía que la se demostraba indiferencia con un 0.236, y en internet encontré muchos distintas tablas de los valores críticos, que valores tomamos en como referencia para efecto del curso?
+
+
+
+### Verificación de condiciones
+
+Leer del texto, se entiende super
+
+Esta es la parte programada
+```{r}
+library ( car )
+
+# Cargar datos .
+datos <- mtcars
+
+# Ajustar modelo .
+modelo <- lm( mpg ~ wt + qsec + am , data = datos )
+
+# Comprobar independencia de los residuos .
+cat (" Prueba de Durbin - Watson para autocorrelaciones ")
+cat (" entre errores :\n")
+print ( durbinWatsonTest ( modelo ) )
+
+# Comprobar normalidad de los residuos .
+cat ("\ nPrueba de normalidad para los residuos :\n")
+print(shapiro.test( modelo $ residuals ) )
+
+# Comprobar homocedasticidad de los residuos .
+cat (" Prueba de homocedasticidad para los residuos :\n")
+print ( ncvTest ( modelo ) )
+
+# Comprobar la multicolinealidad .
+vifs <- vif( modelo )
+cat ("\ nVerificar la multicolinealidad :\n")
+cat ("- VIFs :\n")
+print ( vifs )
+cat ("- Tolerancias :\n")
+print (1 / vifs )
+cat ("- VIF medio :", mean ( vifs ) , "\n")
+```
+
+
+
+# Lectura 15: Regesión logística
+
+La regresión logística es un modelo lineal generalizado, que admite una variable de respuesta cuyos
+residuos sigan una distribución diferente a la normal.
+
+Esta función describe una transición de cero a uno, por lo que resulta especialmente útil para representar la probabilidad de que ocurra algún evento: un valor cercano a cero indica que es muy poco probable, mientras un valor cercano a 1 corresponde a una alta probabilidad (lógicamente, un valor de 0, 5 indica que es igualmente probable que el evento ocurra o no).
+Así, la regresión logística resulta adecuada para predecir una respuesta dicotómica, pues puede ser asociada
+a una distribución binomial
+
+**Odd** puede entenderse como “oportunidad” o “chance”, aunque a veces se traduce incorrectamente como “probabilidad”. Matemáticamente, el odds ratio se define como la razón entre la probabilidad de que ocurra un evento y la probabilidad de que este no ocurra.r
+
+No entendí 100%  la idea de lo que sucedió aquí dmkds
+
+### Evaluación de un clasificador
+
+Una de las formas de evaluar modelos es de acuerdo a la cantidad de errores cometidos. Para ello, el primer paso consiste en construir una tabla de contingencia (también llamada matriz de durbconfusión) para las respuestas predichas y observadas, como muestra la tabla 14.1 (texto), bastante similar a la que ya conocimos para explicar los errores de decisión en la prueba de hipótesis (tabla 4.1 texto). 
+
+Las cuatro celdas de la matriz de confusión contienen:
+
+* Verdaderos positivos (VP): cantidad de instancias correctamente clasificadas como pertenecientes a la clase positiva.
+
+* Falsos positivos (FP): cantidad de instancias erróneamente clasificadas como pertenecientes a la clase positiva.
+
+* Falsos negativos (FN ): cantidad de instancias erróneamente clasificadas como pertenecientes a la clase negativa.
+
+* Verdaderos negativos (VN ): cantidad de instancias correctamente clasificadas como pertenecientes
+a la clase negativa.
+
+**Leer del texto esta parte que viene aquí**
+
+### Bondad de ajuste del modelo
+
+El estadístico de log-verosimilitud (lnL), dado por la ecuación 14.7, nos permite cuantificar la diferencia entre las probabilidades predichas y las observadas. Este estadístico se asemeja a la suma de los residuos cuadrados de la regresión lineal en el sentido de que cuantifica la cantidad de información que carece de explicación tras el ajuste del modelo. Así, mientras menor sea su valor, mejor es el ajuste del modelo.
+
+La desviación (en inglés deviance), a menudo denotada por −2LL y en pocas ocasiones llamada devianza, suele usarse en lugar de la log-verosimilitud porque sigue una distribución $χ^2$, lo que facilita calcular el nivel de significación del valor. Está dada por la ecuación 14.14.
+
+**Aquí también ocupan AIC y BIC**
+
+### Regresión logística en R
+
+En R, podemos ajustar un modelo de regresión logística mediante la función **glm(formula, family = binomial(link = "logit"), data), donde:
+
+* formula tiene la forma <variable de respuesta>∼<variable predictora>.
+
+* data: matriz de datos.
+
+Puesto que existen otros modelos generalizados de regresión lineal, el argumento family = binomial(link = "logit") indica que asumiremos una distribución binomial para la variable de respuesta y que usaremos la función logística.
+
+```{r}
+library (pROC)
+library (caret)
+
+set.seed(1313)
+
+# Cargar los datos.
+datos <- mtcars
+datos$am <- factor (datos$am)
+
+# Separar conjuntos de entrenamiento y prueba.
+n <- nrow(datos)
+n_entrenamiento <- floor(0.8 * n)
+muestra <- sample.int(n = n, size = n_entrenamiento, replace = FALSE)
+entrenamiento <- datos[muestra, ]
+prueba <- datos[-muestra, ]
+
+# Ajustar modelo.
+modelo <- glm(am ~ wt, family = binomial(link = "logit"), data = entrenamiento)
+print (summary (modelo))
+
+# Evaluar el modelo con el conjunto de entrenamiento.
+cat("Evaluacién del modelo a partir del conjunto de entrenamiento:\n")
+probs_e <- predict(modelo, entrenamiento, type = "response")
+
+umbral <- 0.5
+preds_e <- sapply(probs_e, function(p) ifelse(p >= umbral, "1", "0"))
+preds_e <- factor(preds_e, levels = levels(datos[["am"]]))
+
+ROC_e <- roc(entrenamiento [["am"]] , probs_e )
+
+plot (ROC_e)
+
+matriz_e <- confusionMatrix(preds_e, entrenamiento[["am"]])
+
+print (matriz_e)
+
+# Evaluar el modelo con el conjunto de prueba
+cat (" Evaluaci ón del modelo a partir del conjunto de prueba :\n")
+probs_p <- predict(modelo , prueba , type = "response")
+preds_p <- sapply(probs_p , function(p) ifelse ( p >= umbral , "1", "0") )
+preds_p <- factor(preds_p , levels = levels(datos [["am"]]) )
+
+ROC_p <- roc(prueba[["am"]], probs_p)
+plot (ROC_p)
+
+matriz_p <- confusionMatrix(preds_p, prueba[["am"]])
+print (matriz_p)
+
+```
+
+### CONDICIONES PARA USAR REGRESIÓN LOGÍSTICA
+
+Desde luego, no basta con evaluar el desempeño del clasificador, sino que también necesitamos verificar el
+cumplimiento de ciertas condiciones para que un modelo de regresión logística sea válido:
+
+1. Debe existir una relación lineal entre los predictores y la respuesta transformada.
+
+2. Los residuos deben ser independientes entre sí. 
+
+Además de las condiciones anteriores, existen otras situaciones en que puede ocurrir que el método de optimización no converja:
+
+1. Multicolinealidad entre los predictores, que en este caso se aborda del mismo modo que para RLM (por
+ejemplo, mediante el factor de inflación de la varianza o la tolerancia).
+
+2. Información incompleta, que se produce cuando no contamos con observaciones suficientes para todas las posibles combinaciones de predictores.
+
+3. Separación perfecta, que ocurre cuando no hay superposición entre las clases, es decir, ¡cuando los predictores separan ambas clases completamente!
+
+# DE AQUÍ EN ADELANTE NO SEGUÍ ESTÁ TODO EN EL TEXTO AAAAAAAAAAA
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
